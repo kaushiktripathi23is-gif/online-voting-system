@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h1 class="mb-4">Results: {{ election.title }}</h1>
+
+    {% if user_vote %}
+    <div class="alert alert-success mt-4">
+        <h4 class="alert-heading">Vote Confirmed!</h4>
+        <p>You have successfully voted in this election.</p>
+        <hr>
+        <a href="{% url 'download_slip' user_vote.id %}" class="btn btn-success">
+            Download Your Confirmation Slip (PDF)
+        </a>
+    </div>
+    {% endif %}
+    <div class="alert alert-info mt-4">
+        <h4 class="alert-heading">Results Not Yet Declared</h4>
+        <p>The results for this election have not been declared by the admin. Please check back later.</p>
+    </div>
+
+    <a href="{% url 'election_list' %}" class="btn btn-secondary mt-4">Back to Elections</a>
+{% endblock %}

@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h1 class="mb-4">Results: {{ election.title }}</h1>
+
+    {% if winner %}
+    <div class="alert alert-success text-center p-4" role="alert">
+        <h2 class="alert-heading">🏆 Winner Declared! 🏆</h2>
+        <p class="display-4" style="font-weight: bold;">{{ winner.name }}</p>
+        <hr>
+        <p class="mb-0 fs-5">with {{ winner.vote_count }} vote(s)</p>
+    </div>
+    {% endif %}
+    <div class="card shadow-sm mt-4">
+        <div class="card-body">
+            <h5 class="card-title">Final Tally</h5>
+            <ul class="list-group list-group-flush">
+                {% for candidate in results %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <span style="font-weight: {% if candidate == winner %}bold{% else %}normal{% endif %};">
+                            {{ candidate.name }}
+                        </span>
+                        <span class="badge bg-primary rounded-pill fs-6">{{ candidate.vote_count }} Vote(s)</span>
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+    {% if user_vote %}
+    <div class="alert alert-info mt-4">
+        <h4 class="alert-heading">Vote Confirmed!</h4>
+        <p>You have successfully voted in this election.</p>
+        <hr>
+        <a href="{% url 'download_slip' user_vote.id %}" class="btn btn-info">
+            Download Your Confirmation Slip (PDF)
+        </a>
+    </div>
+    {% endif %}
+    <a href="{% url 'election_list' %}" class="btn btn-secondary mt-4">Back to Elections</a>
+{% endblock %}

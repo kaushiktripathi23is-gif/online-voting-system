@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0">Voter Verification</h4>
+            </div>
+            <div class="card-body">
+                
+                {% if not profile.is_verified %}
+                    <div class="alert alert-info">
+                        <strong>Step 1:</strong> Please enter your College ID and Aadhaar Number to verify your identity.
+                    </div>
+
+                    <form method="post">
+                        {% csrf_token %}
+                        {% if form.non_field_errors %}
+                            <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+                        {% endif %}
+
+                        <div class="mb-3">
+                            <label for="{{ form.college_id.id_for_label }}" class="form-label">College ID</label>
+                            {{ form.college_id }}
+                            {% if form.college_id.errors %}
+                                <div class="text-danger small">{{ form.college_id.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.aadhaar_number.id_for_label }}" class="form-label">Aadhaar Number</label>
+                            {{ form.aadhaar_number }}
+                            {% if form.aadhaar_number.errors %}
+                                <div class="text-danger small">{{ form.aadhaar_number.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-100">Save ID Information</button>
+                    </form>
+                {% else %}
+                    <div class="alert alert-success">
+                        ID Information Verified! <br>
+                        <strong>Step 2:</strong> Please register your face below.
+                    </div>
+                {% endif %}
+
+                <hr class="my-4">
+
+                <div class="mt-4">
+                    <h5>Biometric Registration</h5>
+                    <p class="text-muted small">We need to scan your face to verify you during voting.</p>
+                    
+                    <div class="text-center">
+                        <video id="video" width="320" height="240" autoplay class="border rounded bg-black"></video>
+                        <canvas id="canvas" width="320" height="240" style="display:none;"></canvas>
+                    </div>
+
+                    <div id="status-msg" class="mt-2 text-center text-info"></div>
+
+                    <div class="d-grid gap-2 mt-3">
+                        <button id="start-camera-btn" class="btn btn-secondary">Start Camera</button>
+                        <button id="capture-btn" class="btn btn-success" disabled>Start Face Registration</button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const startBtn = document.getElementById('start-camera-btn');
+    const captureBtn = document.getElementById('capture-btn');
+    const statusMsg = document.getElementById('status-msg');
+    let stream = null;
+
+    // 1. Start Camera
+    startBtn.addEventListener('click', async () => {
+        try {
+            stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            video.srcObject = stream;
+            startBtn.disabled = true;
+            captureBtn.disabled = false;
+            statusMsg.innerText = "Camera active. Look at the camera and click 'Start Face Registration'.";
+        } catch (err) {
+            statusMsg.innerText = "Error accessing camera: " + err;
+            statusMsg.className = "text-center text-danger";
+        }
+    });
+
+    // 2. Capture 50 Frames
+    captureBtn.addEventListener('click', async () => {
+        captureBtn.disabled = true;
+        statusMsg.innerText = "Scanning face... Please hold still.";
+        
+        let frames = [];
+        let count = 0;
+        const maxFrames = 50;
+        
+        const interval = setInterval(() => {
+            if (count >= maxFrames) {
+                clearInterval(interval);
+                sendFramesToServer(frames);
+                return;
+            }
+            
+            // Draw video frame to canvas
+            const context = canvas.getContext('2d');
+            context.drawImage(video, 0, 0, 320, 240);
+            
+            // Convert to Base64 string
+            // We only need the data part, not the header "data:image/png;base64,"
+            let dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+            // Split to get just the base64 data
+            let base64Data = dataUrl.split(',')[1];
+            
+            frames.push(base64Data);
+            count++;
+            statusMsg.innerText = `Scanning... ${Math.round((count/maxFrames)*100)}%`;
+            
+        }, 100); // Capture every 100ms
+    });
+
+    // 3. Send to Server
+    async function sendFramesToServer(frames) {
+        statusMsg.innerText = "Processing data... Please wait.";
+        
+        try {
+            const response = await fetch("{% url 'ajax_register_face' %}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}' // This token is for the AJAX request
+                },
+                body: JSON.stringify({ frames: frames })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                statusMsg.className = "text-center text-success";
+                statusMsg.innerText = "Face registered successfully! Redirecting...";
+                setTimeout(() => {
+                    window.location.href = "{% url 'home' %}";
+                }, 1500);
+            } else {
+                statusMsg.className = "text-center text-danger";
+                statusMsg.innerText = "Error: " + result.error;
+                captureBtn.disabled = false;
+            }
+            
+        } catch (err) {
+            statusMsg.className = "text-center text-danger";
+            statusMsg.innerText = "Network Error: " + err;
+            captureBtn.disabled = false;
+        }
+    }
+</script>
+{% endblock %}

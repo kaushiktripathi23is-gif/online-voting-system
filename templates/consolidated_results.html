@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h1 class="mb-4">Declared Election Results</h1>
+
+    {% if not results_data %}
+        <div class="alert alert-info">There are no results to show at this time.</div>
+    {% endif %}
+
+    <div class="row">
+        {% for item in results_data %}
+        <div class="col-md-6 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-header fs-5">
+                    {{ item.election.title }}
+                </div>
+                <div class="card-body">
+                    {% if item.winner %}
+                        <h5 class="card-title">Winner: 
+                            <span class="text-success" style="font-weight: bold;">
+                                {{ item.winner.name }}
+                            </span>
+                        </h5>
+                        <p class="card-text">
+                            Total Votes: {{ item.winner.vote_count }}
+                        </p>
+                    {% else %}
+                        <h5 class="card-title text-muted">No votes were cast in this election.</h5>
+                    {% endif %}
+
+                    <a href="{% url 'results' item.election.id %}" class="btn btn-primary mt-2">
+                        View Full Tally
+                    </a>
+                </div>
+                <div class="card-footer text-muted">
+                    Election ended: {{ item.election.end_date|date:"F j, Y" }}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+{% endblock %}

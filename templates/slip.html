@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Voting Slip</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 40px;
+        }
+        .container {
+            border: 2px solid #333;
+            border-radius: 10px;
+            padding: 25px;
+            width: 600px;
+            margin: auto;
+        }
+        .header {
+            text-align: center;
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 10px;
+        }
+        .header h1 {
+            margin: 0;
+            color: #333;
+        }
+        .header p {
+            font-size: 1.2em;
+            color: #555;
+            margin: 5px 0;
+        }
+        .content {
+            margin-top: 20px;
+        }
+        .content p {
+            font-size: 1.1em;
+            line-height: 1.6;
+        }
+        .content strong {
+            color: #000;
+        }
+        .footer {
+            margin-top: 30px;
+            text-align: center;
+            font-size: 0.9em;
+            color: #777;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Vote Confirmation Slip</h1>
+            <p>Institutional Voting System</p>
+        </div>
+        
+        <div class="content">
+            <p>
+                This slip confirms that <strong>{{ vote.voter.username }}</strong>
+                has successfully cast a vote in the following election:
+            </p>
+            
+            <h2 style="text-align: center; color: #111;">{{ vote.election.title }}</h2>
+            
+            <p>
+                <strong>Voter:</strong> {{ vote.voter.username }}<br>
+                <strong>Date & Time:</strong> {{ vote.timestamp|date:"F j, Y, P" }}<br>
+                <strong>Confirmation ID:</strong> VOTE-{{ vote.id }}-{{ vote.voter.id }}
+            </p>
+            
+            <p style="font-size: 1em; color: #444;">
+                <i>
+                    Note: For privacy, the candidate you voted for is not displayed on this slip.
+                    This receipt only confirms your participation.
+                </i>
+            </p>
+        </div>
+        
+        <div class="footer">
+            Thank you for participating.
+        </div>
+    </div>
+</body>
+</html>

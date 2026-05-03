@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h1 class="mb-4">Vote: {{ election.title }}</h1>
+    <p>Select your candidate below. You will be asked to verify your face to cast your vote.</p>
+    
+    <div class="row">
+        {% for candidate in candidates %}
+        <div class="col-md-4 mb-3">
+            <div class="card h-100">
+                <div class="card-body d-flex flex-column">
+                    <h5 class="card-title">{{ candidate.name }}</h5>
+                    <p class="card-text">{{ candidate.bio|default:"No bio available." }}</p>
+                    
+                    <button type="button" class="btn btn-primary mt-auto" 
+                            data-bs-toggle="modal" data-bs-target="#voteModal"
+                            data-candidate-id="{{ candidate.id }}"
+                            data-candidate-name="{{ candidate.name }}">
+                        Vote for {{ candidate.name }}
+                    </button>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="modal fade" id="voteModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="voteModalLabel">Verify to Vote</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Voting for: <strong id="modal-candidate-name"></strong></p>
+                    <p>Please look at your webcam for live verification.</p>
+                    <video id="modal-video" width="100%" height="auto" autoplay muted playsinline></video>
+                    <canvas id="modal-canvas" style="display: none;"></canvas>
+                    <div id="modal-status" class="mt-3"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="modal-close-btn">Cancel</button>
+                    <button type="button" class="btn btn-success" id="modal-confirm-vote-btn">Confirm My Vote</button>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const voteModal = document.getElementById('voteModal');
+    const video = document.getElementById('modal-video');
+    const canvas = document.getElementById('modal-canvas');
+    const context = canvas.getContext('2d');
+    const statusMsg = document.getElementById('modal-status');
+    const confirmBtn = document.getElementById('modal-confirm-vote-btn');
+    const closeBtn = document.getElementById('modal-close-btn');
+    
+    let currentCandidateId = null;
+    let stream = null;
+
+    // When modal is shown, start webcam
+    voteModal.addEventListener('show.bs.modal', async (event) => {
+        // Get candidate info from the button that was clicked
+        const button = event.relatedTarget;
+        currentCandidateId = button.getAttribute('data-candidate-id');
+        const candidateName = button.getAttribute('data-candidate-name');
+        
+        document.getElementById('modal-candidate-name').innerText = candidateName;
+        statusMsg.innerText = "Starting webcam...";
+        statusMsg.className = 'alert alert-info';
+        confirmBtn.disabled = true;
+        
+        try {
+            stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            video.srcObject = stream;
+            await new Promise((resolve) => video.onplaying = resolve);
+            
+            // Set canvas size
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            
+            statusMsg.innerText = "Webcam active. Press 'Confirm' to verify.";
+            confirmBtn.disabled = false;
+
+        } catch (err) {
+            statusMsg.innerText = "Could not access webcam. Please check permissions.";
+            statusMsg.className = 'alert alert-danger';
+        }
+    });
+
+    // When "Confirm" button is clicked
+    confirmBtn.addEventListener('click', async () => {
+        statusMsg.innerText = "Capturing image... Verifying...";
+        statusMsg.className = 'alert alert-info';
+        confirmBtn.disabled = true;
+        closeBtn.disabled = true;
+
+        // 1. Capture one frame
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+
+        // 2. Send to server
+        try {
+            const response = await fetch("{% url 'ajax_check_face_and_vote' %}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({
+                    frame: dataUrl, // Send the full data URL
+                    candidate_id: currentCandidateId,
+                    election_id: {{ election.id }}
+                })
+            });
+
+            const result = await response.json();
+
+            // --- THIS IS THE MODIFIED SECTION ---
+            // --- THIS IS THE NEW (CORRECT) CODE ---
+        if (result.success) {
+            statusMsg.className = 'alert alert-success';
+            statusMsg.innerText = "Vote cast successfully! Redirecting to results...";
+
+    // Wait 2 seconds so the user can read the message, then redirect
+            setTimeout(() => {
+                window.location.href = "{% url 'results' election.id %}";
+    }, 2000); // 2000 milliseconds = 2 seconds
+}
+            // --- END OF MODIFIED SECTION ---
+            else {
+                statusMsg.className = 'alert alert-danger';
+                statusMsg.innerText = `Error: ${result.error}`;
+                confirmBtn.disabled = false;
+                closeBtn.disabled = false;
+            }
+
+        } catch (err) {
+            statusMsg.className = 'alert alert-danger';
+            statusMsg.innerText = `A network error occurred: ${err}`;
+            confirmBtn.disabled = false;
+            closeBtn.disabled = false;
+        }
+    });
+
+    // When modal is hidden, stop webcam
+    voteModal.addEventListener('hide.bs.modal', () => {
+        if (stream) {
+            stream.getTracks().forEach(track => track.stop());
+            video.srcObject = null;
+            stream = null;
+        }
+        // Reset modal state
+        currentCandidateId = null;
+        statusMsg.innerText = "";
+        statusMsg.className = "";
+        confirmBtn.disabled = false;
+        closeBtn.disabled = false;
+    });
+
+</script>
+{% endblock %}

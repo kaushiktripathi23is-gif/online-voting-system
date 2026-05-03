@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <div class="p-5 mb-4 bg-light rounded-3 shadow-sm">
+        <div class="container-fluid py-5">
+            <h1 class="display-5 fw-bold">Welcome, {{ user.username }}!</h1>
+            <p class="col-md-8 fs-4">
+                You are fully verified and ready to vote.
+            </p>
+            <a href="{% url 'election_list' %}" class="btn btn-primary btn-lg">View Active Elections</a>
+        </div>
+    </div>
+{% endblock %}
